@@ -145,8 +145,8 @@ public abstract class S2BaseDemo implements CommandLineRunner {
             return chatModels.get(0);
         } else {
             ChatModel chatModel = new ChatModel();
-            chatModel.setName("OpenAI模型DEMO");
-            chatModel.setDescription("由langchain4j社区提供仅用于体验(单次请求最大token数1000), 正式使用请切换大模型");
+            chatModel.setName("讯飞开放平台DeepSeek-R1满血版免费版");
+            chatModel.setDescription("讯飞开放平台DeepSeek-R1免费版的有效期至2025年3月10日。");
             chatModel.setConfig(ModelProvider.DEMO_CHAT_MODEL);
             if (StringUtils.isNotBlank(environment.getProperty("OPENAI_BASE_URL"))) {
                 chatModel.getConfig().setBaseUrl(environment.getProperty("OPENAI_BASE_URL"));

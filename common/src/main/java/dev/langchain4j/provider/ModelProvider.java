@@ -14,8 +14,8 @@ import java.util.Map;
 public class ModelProvider {
 
     public static final ChatModelConfig DEMO_CHAT_MODEL =
-            ChatModelConfig.builder().provider("OPEN_AI").baseUrl("https://api.openai.com/v1")
-                    .apiKey("demo").modelName("gpt-4o-mini").temperature(0.0).timeOut(60L).build();
+            ChatModelConfig.builder().provider("OPEN_AI").baseUrl("https://maas-api.cn-huabei-1.xf-yun.com/v1")
+                    .apiKey("sk-rBgkPYlgPBcx0fmK0d4aDa58254c4290BeFc222e6f201d51").modelName("xdeepseekr1").temperature(0.0).timeOut(60L).build();
 
     private static final Map<String, ModelFactory> factories = new HashMap<>();
 
