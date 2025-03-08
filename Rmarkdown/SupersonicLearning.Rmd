@@ -1,0 +1,392 @@
+---
+title: "Supersonic BI Note"
+author: "Tao Zou"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    self_contained: true
+    thumbnails: true
+    lightbox: true
+    gallery: false
+    highlight: tango
+---
+
+<style>
+.copy-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: #011627;
+  border: none;
+  border-radius: 3px;
+  padding: 5px;
+  cursor: pointer;
+  font-family: 'Times New Roman';
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', (event) => {
+  // 创建复制到剪贴板的函数
+  function copyToClipboard(str) {
+    const el = document.createElement('textarea');
+    el.value = str;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+  };
+
+  // 为每个代码块添加复制按钮
+  document.querySelectorAll('pre code').forEach((block) => {
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.textContent = 'Copy';
+    btn.addEventListener('click', () => {
+      // 复制文本到剪贴板
+      copyToClipboard(block.textContent);
+      // 更新按钮文本为 "Copied"
+      btn.textContent = 'Copied';
+      // 设置两秒后恢复按钮文本
+      setTimeout(() => {
+        btn.textContent = 'Copy';
+      }, 2000); // 2000 毫秒后执行
+    });
+    block.parentNode.appendChild(btn);
+  });
+});
+</script>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(warn = -1)
+```
+
+```{r include=FALSE}
+setwd("D:/Development/supersonic/Rmarkdown")
+```
+
+# 部署
+
+参考文档：[https://supersonicbi.github.io/docs](https://supersonicbi.github.io/docs)
+
+## Windows部署
+
+1. 检查前端Node和Java版本：
+
+```bash
+node -v
+java --version
+```
+
+2. 编译webapp
+
+需要借助git的命令行的`sh`命令。
+
+```bash
+sh ./assembly/bin/supersonic-build.sh webapp
+```
+
+3. 启动类com.tencent.supersonic.StandaloneLauncher
+
+4. 访问http://localhost:9080
+
+## Ubuntu部署 （部署失败了）
+1. 安装NodeJS、npm
+
+```bash
+apt-get 
+apt install nodejs
+apt install npm
+```
+
+<font color="yellow">我通过上述方式安装的nodejs版本非常低（但是系统提示就是最新得版本），可能正是因为此导致在webapp的编译过程中失败。我后面得探寻新的方式安装nodejs。</font>
+
+手动下载nodejs-v20.16.0，并添加环境变量：
+
+```bash
+curl -O https://nodejs.org/dist/v20.16.0/node-v20.16.0-linux-x64.tar.gz
+tar -zxvf node-v20.16.0-linux-x64.tar.gz -C /opt/Nodejs
+```
+
+```sh
+#NODEJS_HOME
+export NODEJS_HOME=/opt/Nodejs/node-v20.16.0-linux-x64
+export PATH=$PATH:$NODEJS_HOME/bin
+```
+
+之后运行下述代码即可验证正确的nodejs和npm版本：
+
+```bash
+node -v
+npm -v
+```
+
+2. 将Ubuntu系统默认的sh命令dash更改为bash
+
+```bash
+sudo dpkg-reconfigure dash
+```
+
+然后选择“no”。<font color="red">注意在完成webapp得编译步骤之后再次执行这个命令复原Ubuntu系统得dash命令状态，以防万一出现别的不兼容的问题。</font>
+
+3. 编译webapp
+
+```bash
+./assembly/bin/supersonic-build.sh webapp
+```
+
+# 编译打包运行
+## Windows编译打包
+1. 项目clone到本地
+
+```bash
+git clone git@github.com:tencentmusic/supersonic.git
+```
+
+2. 修改程序运行的脚本`.\assembly\bin\supersonic-daemon.bat`
+
+原文件中有一处换行符的使用会报错。
+
+修改前的内容：
+
+```bat
+   set "java-command=-Dfile.encoding=UTF-8 -Duser.language=Zh -Duser.region=CN -Duser.timezone=GMT+08 -Dspring.profiles.active=%profile% -Xms1024m
+   -Xmx1024m -cp %CLASSPATH% %MAIN_CLASS%"
+```
+
+修改后的内容：
+
+```bat
+   set "java-command=-Dfile.encoding=UTF-8 -Duser.language=Zh -Duser.region=CN -Duser.timezone=GMT+08 -Dspring.profiles.active=%profile% -Xms1024m -Xmx1024m -cp %CLASSPATH% %MAIN_CLASS%"
+```
+
+3. 运行编译打包脚本
+
+```bash
+cd supersonic
+.\assembly\bin\supersonic-build.bat
+```
+
+上述命令执行成功后会在`.\assembly\build`中生成文件`supersonic-standalone-0.9.10-SNAPSHOT`
+
+4. 运行程序包
+
+```bash
+cd supersonic
+.\assembly\build\supersonic-standalone-0.9.10-SNAPSHOT\bin\supersonic-daemon.bat start
+```
+
+运行日志文件保存于`.\assembly\build\supersonic-standalone-0.9.10-SNAPSHOT\logs`路径下。
+
+之后本地访问`localhost:9080`即可使用supersonic程序。
+
+## Ubuntu系统运行
+1. 将Windows系统中打包好的文件`supersonic-standalone-0.9.10-SNAPSHOT.zip`上传到Ubuntu系统中。
+
+2. 使用dos2unix工具解决Windows和Linux中换行符不兼容问题：
+
+```bash
+apt-get install dos2unix
+```
+
+```bash
+cd supersonic-standalone-0.9.10-SNAPSHOT/bin
+dos2unix supersonic-common.sh
+dos2unix supersonic-daemon.sh
+dos2unix supersonic-env.sh
+```
+
+3. 运行程序包
+
+运行之前先确认`/etc/profile.d/my_env.sh`中配置的JAVA_HOME版本和在Windows打包时使用的Java版本一致。（都是JDK17）
+
+```bash
+supersonic-standalone-0.9.10-SNAPSHOT/bin/supersonic-daemon.sh start
+```
+
+运行日志保存在`supersonic-standalone-0.9.10-SNAPSHOT/logs`路径下。
+
+在Ubuntu系统中启动supersonic程序大概需要消耗运行内存$1.2\text{GB}$。
+
+# 源代码结构分析
+## 预加载
+
+## NL2SQL算法部分
+*LLMReq llmReq*表示向LLM发送请求的请求类。
+*LLMResp llmResp*表示LLM的响应类。
+
+`llmReq.schema.metrics`对应**语义建模**->**模型管理**->**指标管理**的内容。
+
+`llmReq.schema.dimensions`对应**语义建模**->**模型管理**->**维度管理**的内容
+
+## LangChain向大模型发送Prompt
+```java
+@Service
+@Slf4j
+public class OnePassSCSqlGenStrategy extends SqlGenStrategy {
+    // ...
+    @Data
+    static class SemanticSql {
+        @Description("thought or remarks to tell users about the sql, make it short.")
+        private String thought;
+        
+        @Description("sql to generate")
+        private String sql;
+    }
+    
+    interface SemanticSqlExtractor {
+        SemanticSql generateSemanticSql(String text);
+    }
+    
+    @Override
+    public LLMResp generate(LLMResp llmReq) {
+        // ...
+        ChatApp chatApp = llmReq.getChatAppConfig().get(APP_KEY);
+        ChatLanguageModel chatLanguageModel = getChatLanguageModel(chatApp.getChatModelConfig());
+        SemanticSqlExtractor extractor = AiServices.create(SemanticSqlExtractor.class, chatLanguageModel);
+        // ...
+        SemanticSql s2Sql = extractor.generateSemanticSql(prompt.toUserMessage().singleText());
+    }
+}
+```
+
+上述代码中的两个`@Description`中的内容很有有可能被Langchain整合进Prompt中，然后要求大模型以json格式输出"thought"和"sql"这两部分内容。
+
+## ChatWorkflowEngine
+`ChatWorkflowEngine`可能是梳理ChatWorkflow的关键 
+
+# Data实体
+## 用户表 s2_user
+用户表位于路径`auth/authentication/src/main/java/com/tencent/supersonic/auth/authentication/persistence/dataobject/UserDO.java`。
+
+`UserDO.java`的属性变量**salt**的作用是作为加密工具的随机种子。在`DefaultUserAdaptor.java`(implements UserAdaptor)中方法`registor(UserReq userReq)`和`updatePassword(UserDO userDO, String newPassword, UserRepository userRepository)`都会调用加密工具`AESEncryptionUtil.java`。
+
+# 使用
+## 数据库管理
+连接MySQL数据库：`jdbc:mysql://113.45.129.200:3306/AutoVisualDB`
+
+# 拟改进之处
+## 1. `List<List<Text2SQLExemplar>> exemplarsList = promptHelper.getFewShotExemplars(llmReq);`这里获取few-shot貌似是写死的，不管面对什么样的用户Query和数据库，few-shot始终都是下述内容：
+
+```text
+示例1：
+问题：
+超音数本月pv最高的用户有哪些
+SQL：
+SELECT 用户 FROM 超音数产品 WHERE 数据日期 >= '2023-08-01' AND 数据日期 <= '2023-08-31' ORDER BY 访问次数 DESC LIMIT 1
+示例2：
+问题：
+过去半个月忠实用户有哪一些
+SQL：
+SELECT 用户 FROM 超音数产品 WHERE 数据日期 >= '2023-09-01' AND 数据日期 <= '2023-09-15' GROUP BY 用户 HAVING SUM(访问次数) > 100
+示例3：
+问题：
+超音数近12个月访问人数 按部门
+SQL：
+SELECT 部门, 数据日期, 访问人数 FROM 超音数产品 WHERE 数据日期 >= '2021-11-06' AND 数据日期 <= '2022-11-06'
+示例4：
+问题：
+超音数访问次数大于1k的部门是哪些
+SQL：
+SELECT 部门 FROM 超音数产品 WHERE 访问次数 > 1000
+示例5：
+问题：
+过去半个月核心用户的访问次数
+SQL：
+SELECT 用户,SUM(访问次数) FROM 超音数产品 WHERE 用户='alice' AND 数据日期 >= '2023-09-01' AND 数据日期 <= '2023-09-15' GROUP BY 用户
+```
+
+## 2. 出现了*号的Semantic SQL无法被正确处理。
+“列出表中的前三行数据”
+
+
+## 3. Semantic SQL正确，而修正SQL出了错
+“列出表中前三条数据，包括“出生日期”、“姓”、“名”、“性别”， “受雇日期”、以及出生的年份”
+
+Semantic SQL为：
+
+```SQL
+SELECT
+  出生日期,
+  姓,
+  名,
+  性别,
+  受雇日期,
+  YEAR (出生日期) AS 出生年份
+FROM
+  员工数据集
+LIMIT
+  3
+```
+
+修正的SQL为：
+
+```SQL
+SELECT
+  出生日期,
+  姓,
+  名,
+  性别,
+  受雇日期,
+  YEAR (出生日期) AS 出生年份
+FROM
+  员工数据集
+GROUP BY
+  姓,
+  受雇日期,
+  名,
+  性别
+LIMIT
+  3
+```
+
+# NL2SQL算法
+## 第一阶段：SemanticSQL生成
+下述内容应该是一个完整的SemanticSQL生成阶段的Prompt：
+
+```text
+#Role: You are a data analyst experienced in SQL languages.
+#Task: You will be provided with a natural language question asked by users,please convert it to a SQL query so that relevant data could be returned by executing the SQL query against underlying database.
+#Rules:
+1.SQL columns and values must be mentioned in the `Schema`, DO NOT hallucinate.
+2.ALWAYS specify time range using `>`,`<`,`>=`,`<=` operator.
+3.DO NOT include time range in the where clause if not explicitly expressed in the `Question`.
+4.DO NOT calculate date range using functions.
+5.ALWAYS use `with` statement if nested aggregation is needed.
+6.ALWAYS enclose alias declared by `AS` command in underscores.
+7.Alias created by `AS` command must be in the same language ast the `Question`.
+#Exemplars: 
+Question:超音数过去90天美术部、技术研发部的访问时长,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics=[<访问时长 COMMENT '一段时间内用户的访问时长' AGGREGATE 'SUM'>], Dimensions=[<数据日期>], Values=[<部门='美术部'>,<部门='技术研发部'>],SideInfo:CurrentDate=[2023-04-21],SQL:SELECT 部门, 访问时长 FROM 超音数产品 WHERE 部门 IN ('美术部', '技术研发部') AND 数据日期 >= '2023-01-21' AND 数据日期 <= '2023-04-21'
+Question:超音数访问时长小于1小时，且来自美术部的用户是哪些,Schema:DatabaseType=[h2], Table:[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics:[<访问时长 COMMENT '一段时间内用户的访问时长' AGGREGATE 'SUM'>], Dimensions:[<用户>,<数据日期>], Values:[<部门='美术部'>],SideInfo:CurrentDate=[2023-07-31],DomainTerms=[<核心用户 COMMENT '用户为tom和lucy'>],SQL:SELECT 用户 FROM 超音数产品 WHERE 部门 = '美术部' AND 访问时长 < 1
+Question:超音数访问次数大于1k的部门是哪些,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics=[<访问次数 ALIAS 'pv' COMMENT '一段时间内用户的访问次数' AGGREGATE 'SUM'>], Dimensions=[<部门>,<数据日期>], Values=[],SideInfo:CurrentDate=[2023-09-14],SQL:SELECT 部门 FROM 超音数产品 WHERE 访问次数 > 1000
+Question:超音数近12个月访问人数 按部门,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics=[<访问次数 ALIAS 'pv' COMMENT '一段时间内用户的访问次数' AGGREGATE 'SUM'>,<访问用户数 ALIAS 'UV,访问人数,' COMMENT '访问的用户个数' AGGREGATE 'COUNT'>,<人均访问次数 ALIAS '平均访问次数,' COMMENT '每个用户平均访问的次数'>], Dimensions=[<部门>,<数据日期>], Values=[],SideInfo:CurrentDate=[2022-11-06],SQL:SELECT 部门, 数据日期, 访问人数 FROM 超音数产品 WHERE 数据日期 >= '2021-11-06' AND 数据日期 <= '2022-11-06'
+Question:比较jackjchen和robinlee今年以来的访问次数,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics=[<访问次数 ALIAS 'pv' COMMENT '一段时间内用户的访问次数' AGGREGATE 'SUM'>,<访问用户数 ALIAS 'UV,访问人数,' COMMENT '访问的用户个数' AGGREGATE 'COUNT'>,<人均访问次数 ALIAS '平均访问次数,' COMMENT '每个用户平均访问的次数'>], Dimensions=[<数据日期>], Values[<用户='jackjchen'>,<用户='robinlee'>],SideInfo:CurrentDate=[2020-12-01],DomainTerms=[<核心用户 COMMENT '核心用户指tom和lucy'>],SQL:SELECT 用户, 访问次数 FROM 超音数产品 WHERE 用户 IN ('jackjchen', 'robinlee') AND 数据日期 >= '2020-01-01' AND 数据日期 <= '2020-12-01'
+#Query: Question:我想知道“刘艺”是否在表中？,Schema:DatabaseType=[H2], DatabaseVersion=[], Table=[歌手数据集], PartitionTimeField=[], PrimaryKeyField=[歌手名], Metrics=[<播放量 COMMENT '播放量' AGGREGATE 'SUM'>,<下载量 COMMENT '下载量' AGGREGATE 'SUM'>,<收藏量 COMMENT '收藏量' AGGREGATE 'SUM'>], Dimensions=[<活跃区域 COMMENT '活跃区域'>,<代表作 COMMENT '代表作'>,<歌手名 COMMENT '歌手名'>], Values=[],SideInfo:CurrentDate=[2025-02-26]
+请生成一个包含以下字段的 JSON 对象：
+1. `thought`: thought or remarks to tell users about the sql, make it short.
+2. `sql`: sql to generate
+```
+
+上述的Prompt里面其实没有使用最原始的**Table Schema**，而是使用的**语义建模**中的“指标”和“维度”。在NL2SQL算法应用之前，需要用户对每个表进行加工，这不太灵活，是个缺点。
+
+大模型生成的内容，然后经过langchain的json格式解析得到下述内容：
+
+```text
+SELECT 歌手名 FROM 歌手数据集 WHERE 歌手名 = '刘艺' LIMIT 1
+```
+
+## 第二阶段：纠正SemanticSQL
+采用规则的方法
+
+## 第三阶段：翻译SemanticSQL
+采用规则的方法：
+
+```sql
+with t_3 as (SELECT `singer_name`
+FROM
+`singer`)
+SELECT singer_name FROM t_3 WHERE singer_name = '刘艺' LIMIT 1
+```
+
+
