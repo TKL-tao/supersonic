@@ -209,6 +209,33 @@ supersonic-standalone-0.9.10-SNAPSHOT/bin/supersonic-daemon.sh start
 
 在Ubuntu系统中启动supersonic程序大概需要消耗运行内存$1.2\text{GB}$。
 
+# 启动
+命令`sh ./assembly/bin/supersonic-build.sh webapp`命令出错的解决方案。
+
+1. 确保相关软件安装：
+
+```bash
+npm -v
+pnpm - v
+node -v
+```
+
+如果找不到pnpm命令，则安装之`npm install -g pnpm`
+
+2. 设置公司代理
+
+```bash
+npm config set proxy http://proxy.company.com:8080
+npm config set https-proxy http://proxy.company.com:8080
+```
+
+3. 以及一些可能会导致成功的命令：
+
+```bash
+npm config set strict-ssl false
+npm config set registry http://registry.npmjs.org/
+```
+
 # 源代码结构分析
 ## 预加载
 

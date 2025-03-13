@@ -7,7 +7,7 @@
 
         <meta name="author" content="Tao Zou" />
     
-        <meta name="date" content="2025-03-02" />
+        <meta name="date" content="2025-03-13" />
     
     <title>Supersonic BI Note</title>
 
@@ -1820,6 +1820,7 @@ margin-left: 0 !important;
             <li><a href="#windows编译打包" id="toc-windows编译打包">Windows编译打包</a></li>
             <li><a href="#ubuntu系统运行" id="toc-ubuntu系统运行">Ubuntu系统运行</a></li>
             </ul></li>
+            <li><a href="#启动" id="toc-启动">启动</a></li>
             <li><a href="#源代码结构分析" id="toc-源代码结构分析">源代码结构分析</a>
             <ul>
             <li><a href="#预加载" id="toc-预加载">预加载</a></li>
@@ -1865,7 +1866,7 @@ margin-left: 0 !important;
       <p class="authors">
            <span class="glyphicon glyphicon-user"></span> Tao Zou
       </p>
-         <p class="date"><span class="glyphicon glyphicon-calendar"></span> 2025-03-02</p>
+         <p class="date"><span class="glyphicon glyphicon-calendar"></span> 2025-03-13</p>
            
 
    
@@ -2016,6 +2017,27 @@ dos2unix supersonic-env.sh</code></pre>
 <p>运行日志保存在<code>supersonic-standalone-0.9.10-SNAPSHOT/logs</code>路径下。</p>
 <p>在Ubuntu系统中启动supersonic程序大概需要消耗运行内存<span class="math inline">\(1.2\text{GB}\)</span>。</p>
 </div>
+</div>
+<div id="启动" class="section level1">
+<h1>启动</h1>
+<p>命令<code>sh ./assembly/bin/supersonic-build.sh webapp</code>命令出错的解决方案。</p>
+<ol style="list-style-type: decimal">
+<li>确保相关软件安装：</li>
+</ol>
+<pre class="bash"><code>npm -v
+pnpm - v
+node -v</code></pre>
+<p>如果找不到pnpm命令，则安装之<code>npm install -g pnpm</code></p>
+<ol start="2" style="list-style-type: decimal">
+<li>设置公司代理</li>
+</ol>
+<pre class="bash"><code>npm config set proxy http://proxy.company.com:8080
+npm config set https-proxy http://proxy.company.com:8080</code></pre>
+<ol start="3" style="list-style-type: decimal">
+<li>以及一些可能会导致成功的命令：</li>
+</ol>
+<pre class="bash"><code>npm config set strict-ssl false
+npm config set registry http://registry.npmjs.org/</code></pre>
 </div>
 <div id="源代码结构分析" class="section level1">
 <h1>源代码结构分析</h1>
