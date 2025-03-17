@@ -368,52 +368,7 @@ LIMIT
   3
 ```
 
-# NL2SQL算法
+# WorkFlow
 ## 第一阶段：SemanticSQL生成
-下述内容应该是一个完整的SemanticSQL生成阶段的Prompt：
-
-```text
-#Role: You are a data analyst experienced in SQL languages.
-#Task: You will be provided with a natural language question asked by users,please convert it to a SQL query so that relevant data could be returned by executing the SQL query against underlying database.
-#Rules:
-1.SQL columns and values must be mentioned in the `Schema`, DO NOT hallucinate.
-2.ALWAYS specify time range using `>`,`<`,`>=`,`<=` operator.
-3.DO NOT include time range in the where clause if not explicitly expressed in the `Question`.
-4.DO NOT calculate date range using functions.
-5.ALWAYS use `with` statement if nested aggregation is needed.
-6.ALWAYS enclose alias declared by `AS` command in underscores.
-7.Alias created by `AS` command must be in the same language ast the `Question`.
-#Exemplars: 
-Question:超音数过去90天美术部、技术研发部的访问时长,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics=[<访问时长 COMMENT '一段时间内用户的访问时长' AGGREGATE 'SUM'>], Dimensions=[<数据日期>], Values=[<部门='美术部'>,<部门='技术研发部'>],SideInfo:CurrentDate=[2023-04-21],SQL:SELECT 部门, 访问时长 FROM 超音数产品 WHERE 部门 IN ('美术部', '技术研发部') AND 数据日期 >= '2023-01-21' AND 数据日期 <= '2023-04-21'
-Question:超音数访问时长小于1小时，且来自美术部的用户是哪些,Schema:DatabaseType=[h2], Table:[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics:[<访问时长 COMMENT '一段时间内用户的访问时长' AGGREGATE 'SUM'>], Dimensions:[<用户>,<数据日期>], Values:[<部门='美术部'>],SideInfo:CurrentDate=[2023-07-31],DomainTerms=[<核心用户 COMMENT '用户为tom和lucy'>],SQL:SELECT 用户 FROM 超音数产品 WHERE 部门 = '美术部' AND 访问时长 < 1
-Question:超音数访问次数大于1k的部门是哪些,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics=[<访问次数 ALIAS 'pv' COMMENT '一段时间内用户的访问次数' AGGREGATE 'SUM'>], Dimensions=[<部门>,<数据日期>], Values=[],SideInfo:CurrentDate=[2023-09-14],SQL:SELECT 部门 FROM 超音数产品 WHERE 访问次数 > 1000
-Question:超音数近12个月访问人数 按部门,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics=[<访问次数 ALIAS 'pv' COMMENT '一段时间内用户的访问次数' AGGREGATE 'SUM'>,<访问用户数 ALIAS 'UV,访问人数,' COMMENT '访问的用户个数' AGGREGATE 'COUNT'>,<人均访问次数 ALIAS '平均访问次数,' COMMENT '每个用户平均访问的次数'>], Dimensions=[<部门>,<数据日期>], Values=[],SideInfo:CurrentDate=[2022-11-06],SQL:SELECT 部门, 数据日期, 访问人数 FROM 超音数产品 WHERE 数据日期 >= '2021-11-06' AND 数据日期 <= '2022-11-06'
-Question:比较jackjchen和robinlee今年以来的访问次数,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics=[<访问次数 ALIAS 'pv' COMMENT '一段时间内用户的访问次数' AGGREGATE 'SUM'>,<访问用户数 ALIAS 'UV,访问人数,' COMMENT '访问的用户个数' AGGREGATE 'COUNT'>,<人均访问次数 ALIAS '平均访问次数,' COMMENT '每个用户平均访问的次数'>], Dimensions=[<数据日期>], Values[<用户='jackjchen'>,<用户='robinlee'>],SideInfo:CurrentDate=[2020-12-01],DomainTerms=[<核心用户 COMMENT '核心用户指tom和lucy'>],SQL:SELECT 用户, 访问次数 FROM 超音数产品 WHERE 用户 IN ('jackjchen', 'robinlee') AND 数据日期 >= '2020-01-01' AND 数据日期 <= '2020-12-01'
-#Query: Question:我想知道“刘艺”是否在表中？,Schema:DatabaseType=[H2], DatabaseVersion=[], Table=[歌手数据集], PartitionTimeField=[], PrimaryKeyField=[歌手名], Metrics=[<播放量 COMMENT '播放量' AGGREGATE 'SUM'>,<下载量 COMMENT '下载量' AGGREGATE 'SUM'>,<收藏量 COMMENT '收藏量' AGGREGATE 'SUM'>], Dimensions=[<活跃区域 COMMENT '活跃区域'>,<代表作 COMMENT '代表作'>,<歌手名 COMMENT '歌手名'>], Values=[],SideInfo:CurrentDate=[2025-02-26]
-请生成一个包含以下字段的 JSON 对象：
-1. `thought`: thought or remarks to tell users about the sql, make it short.
-2. `sql`: sql to generate
-```
-
-上述的Prompt里面其实没有使用最原始的**Table Schema**，而是使用的**语义建模**中的“指标”和“维度”。在NL2SQL算法应用之前，需要用户对每个表进行加工，这不太灵活，是个缺点。
-
-大模型生成的内容，然后经过langchain的json格式解析得到下述内容：
-
-```text
-SELECT 歌手名 FROM 歌手数据集 WHERE 歌手名 = '刘艺' LIMIT 1
-```
-
-## 第二阶段：纠正SemanticSQL
-采用规则的方法
-
-## 第三阶段：翻译SemanticSQL
-采用规则的方法：
-
-```sql
-with t_3 as (SELECT `singer_name`
-FROM
-`singer`)
-SELECT singer_name FROM t_3 WHERE singer_name = '刘艺' LIMIT 1
-```
 
 
