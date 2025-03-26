@@ -7,7 +7,7 @@
 
         <meta name="author" content="Tao Zou" />
     
-        <meta name="date" content="2025-03-17" />
+        <meta name="date" content="2025-03-26" />
     
     <title>Supersonic BI Note</title>
 
@@ -1823,6 +1823,7 @@ margin-left: 0 !important;
             <li><a href="#启动" id="toc-启动">启动</a></li>
             <li><a href="#源代码结构分析" id="toc-源代码结构分析">源代码结构分析</a>
             <ul>
+            <li><a href="#添加网络代理" id="toc-添加网络代理">添加网络代理</a></li>
             <li><a href="#预加载" id="toc-预加载">预加载</a></li>
             <li><a href="#nl2sql算法部分" id="toc-nl2sql算法部分">NL2SQL算法部分</a></li>
             <li><a href="#langchain向大模型发送prompt" id="toc-langchain向大模型发送prompt">LangChain向大模型发送Prompt</a></li>
@@ -1846,11 +1847,13 @@ margin-left: 0 !important;
             <li><a href="#semantic-sql正确而修正sql出了错" id="toc-semantic-sql正确而修正sql出了错">3. Semantic
             SQL正确，而修正SQL出了错</a></li>
             </ul></li>
-            <li><a href="#nl2sql算法" id="toc-nl2sql算法">NL2SQL算法</a>
+            <li><a href="#workflow" id="toc-workflow">WorkFlow</a>
             <ul>
-            <li><a href="#第一阶段semanticsql生成" id="toc-第一阶段semanticsql生成">第一阶段：SemanticSQL生成</a></li>
-            <li><a href="#第二阶段纠正semanticsql" id="toc-第二阶段纠正semanticsql">第二阶段：纠正SemanticSQL</a></li>
-            <li><a href="#第三阶段翻译semanticsql" id="toc-第三阶段翻译semanticsql">第三阶段：翻译SemanticSQL</a></li>
+            <li><a href="#parsing" id="toc-parsing">Parsing</a></li>
+            </ul></li>
+            <li><a href="#bad-cases" id="toc-bad-cases">Bad Cases</a>
+            <ul>
+            <li><a href="#样例1" id="toc-样例1">样例1</a></li>
             </ul></li>
             </ul>
           </div>
@@ -1866,7 +1869,7 @@ margin-left: 0 !important;
       <p class="authors">
            <span class="glyphicon glyphicon-user"></span> Tao Zou
       </p>
-         <p class="date"><span class="glyphicon glyphicon-calendar"></span> 2025-03-17</p>
+         <p class="date"><span class="glyphicon glyphicon-calendar"></span> 2025-03-26</p>
            
 
    
@@ -2041,6 +2044,11 @@ npm config set registry http://registry.npmjs.org/</code></pre>
 </div>
 <div id="源代码结构分析" class="section level1">
 <h1>源代码结构分析</h1>
+<div id="添加网络代理" class="section level2">
+<h2>添加网络代理</h2>
+<p>如果要添加代理，可以在OpenAiModelFactory.java中的<code>createChatModel()</code>方法中新增：</p>
+<pre class="java"><code>.proxy(new Proxy(Proxy.Type.valueOf(&quot;HTTP&quot;), new InetSocketAddress(&quot;proxy.huawei.com&quot;, 8080))).build();</code></pre>
+</div>
 <div id="预加载" class="section level2">
 <h2>预加载</h2>
 </div>
@@ -2173,11 +2181,15 @@ LIMIT
   3</code></pre>
 </div>
 </div>
-<div id="nl2sql算法" class="section level1">
-<h1>NL2SQL算法</h1>
-<div id="第一阶段semanticsql生成" class="section level2">
-<h2>第一阶段：SemanticSQL生成</h2>
-<p>下述内容应该是一个完整的SemanticSQL生成阶段的Prompt：</p>
+<div id="workflow" class="section level1">
+<h1>WorkFlow</h1>
+<p>测试问题：<strong>我想知道创始人为盖茨的公司在2023年的利润是多少？苹果公司id奠基人</strong></p>
+<div id="parsing" class="section level2">
+<h2>Parsing</h2>
+<p><font color="cornflowerblue">
+你是能生成结构化数据的AI助手。根据用户输入生成包含以下字段的JSON对象： -
+thought: thought or remarks to tell users about the sql, make it short.
+- sql: sql to generate </font></p>
 <pre class="text"><code>#Role: You are a data analyst experienced in SQL languages.
 #Task: You will be provided with a natural language question asked by users,please convert it to a SQL query so that relevant data could be returned by executing the SQL query against underlying database.
 #Rules:
@@ -2189,31 +2201,25 @@ LIMIT
 6.ALWAYS enclose alias declared by `AS` command in underscores.
 7.Alias created by `AS` command must be in the same language ast the `Question`.
 #Exemplars: 
+Question:过去半个月忠实用户有哪一些,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT &#39;yyyy-MM-dd&#39;], Metrics=[&lt;访问次数 ALIAS &#39;pv&#39; COMMENT &#39;一段时间内用户的访问次数&#39; AGGREGATE &#39;SUM&#39;&gt;], Dimensions=[&lt;用户&gt;,&lt;数据日期&gt;], Values=[],SideInfo:CurrentDate=[2023-09-15],DomainTerms=[&lt;忠实用户 COMMENT &#39;一段时间内总访问次数大于100的用户&#39;&gt;],SQL:SELECT 用户 FROM 超音数产品 WHERE 数据日期 &gt;= &#39;2023-09-01&#39; AND 数据日期 &lt;= &#39;2023-09-15&#39; GROUP BY 用户 HAVING SUM(访问次数) &gt; 100
+Question:比较jackjchen和robinlee今年以来的访问次数,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT &#39;yyyy-MM-dd&#39;], Metrics=[&lt;访问次数 ALIAS &#39;pv&#39; COMMENT &#39;一段时间内用户的访问次数&#39; AGGREGATE &#39;SUM&#39;&gt;,&lt;访问用户数 ALIAS &#39;UV,访问人数,&#39; COMMENT &#39;访问的用户个数&#39; AGGREGATE &#39;COUNT&#39;&gt;,&lt;人均访问次数 ALIAS &#39;平均访问次数,&#39; COMMENT &#39;每个用户平均访问的次数&#39;&gt;], Dimensions=[&lt;数据日期&gt;], Values[&lt;用户=&#39;jackjchen&#39;&gt;,&lt;用户=&#39;robinlee&#39;&gt;],SideInfo:CurrentDate=[2020-12-01],DomainTerms=[&lt;核心用户 COMMENT &#39;核心用户指tom和lucy&#39;&gt;],SQL:SELECT 用户, 访问次数 FROM 超音数产品 WHERE 用户 IN (&#39;jackjchen&#39;, &#39;robinlee&#39;) AND 数据日期 &gt;= &#39;2020-01-01&#39; AND 数据日期 &lt;= &#39;2020-12-01&#39;
 Question:超音数过去90天美术部、技术研发部的访问时长,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT &#39;yyyy-MM-dd&#39;], Metrics=[&lt;访问时长 COMMENT &#39;一段时间内用户的访问时长&#39; AGGREGATE &#39;SUM&#39;&gt;], Dimensions=[&lt;数据日期&gt;], Values=[&lt;部门=&#39;美术部&#39;&gt;,&lt;部门=&#39;技术研发部&#39;&gt;],SideInfo:CurrentDate=[2023-04-21],SQL:SELECT 部门, 访问时长 FROM 超音数产品 WHERE 部门 IN (&#39;美术部&#39;, &#39;技术研发部&#39;) AND 数据日期 &gt;= &#39;2023-01-21&#39; AND 数据日期 &lt;= &#39;2023-04-21&#39;
 Question:超音数访问时长小于1小时，且来自美术部的用户是哪些,Schema:DatabaseType=[h2], Table:[超音数产品], PartitionTimeField=[数据日期 FORMAT &#39;yyyy-MM-dd&#39;], Metrics:[&lt;访问时长 COMMENT &#39;一段时间内用户的访问时长&#39; AGGREGATE &#39;SUM&#39;&gt;], Dimensions:[&lt;用户&gt;,&lt;数据日期&gt;], Values:[&lt;部门=&#39;美术部&#39;&gt;],SideInfo:CurrentDate=[2023-07-31],DomainTerms=[&lt;核心用户 COMMENT &#39;用户为tom和lucy&#39;&gt;],SQL:SELECT 用户 FROM 超音数产品 WHERE 部门 = &#39;美术部&#39; AND 访问时长 &lt; 1
 Question:超音数访问次数大于1k的部门是哪些,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT &#39;yyyy-MM-dd&#39;], Metrics=[&lt;访问次数 ALIAS &#39;pv&#39; COMMENT &#39;一段时间内用户的访问次数&#39; AGGREGATE &#39;SUM&#39;&gt;], Dimensions=[&lt;部门&gt;,&lt;数据日期&gt;], Values=[],SideInfo:CurrentDate=[2023-09-14],SQL:SELECT 部门 FROM 超音数产品 WHERE 访问次数 &gt; 1000
-Question:超音数近12个月访问人数 按部门,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT &#39;yyyy-MM-dd&#39;], Metrics=[&lt;访问次数 ALIAS &#39;pv&#39; COMMENT &#39;一段时间内用户的访问次数&#39; AGGREGATE &#39;SUM&#39;&gt;,&lt;访问用户数 ALIAS &#39;UV,访问人数,&#39; COMMENT &#39;访问的用户个数&#39; AGGREGATE &#39;COUNT&#39;&gt;,&lt;人均访问次数 ALIAS &#39;平均访问次数,&#39; COMMENT &#39;每个用户平均访问的次数&#39;&gt;], Dimensions=[&lt;部门&gt;,&lt;数据日期&gt;], Values=[],SideInfo:CurrentDate=[2022-11-06],SQL:SELECT 部门, 数据日期, 访问人数 FROM 超音数产品 WHERE 数据日期 &gt;= &#39;2021-11-06&#39; AND 数据日期 &lt;= &#39;2022-11-06&#39;
-Question:比较jackjchen和robinlee今年以来的访问次数,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT &#39;yyyy-MM-dd&#39;], Metrics=[&lt;访问次数 ALIAS &#39;pv&#39; COMMENT &#39;一段时间内用户的访问次数&#39; AGGREGATE &#39;SUM&#39;&gt;,&lt;访问用户数 ALIAS &#39;UV,访问人数,&#39; COMMENT &#39;访问的用户个数&#39; AGGREGATE &#39;COUNT&#39;&gt;,&lt;人均访问次数 ALIAS &#39;平均访问次数,&#39; COMMENT &#39;每个用户平均访问的次数&#39;&gt;], Dimensions=[&lt;数据日期&gt;], Values[&lt;用户=&#39;jackjchen&#39;&gt;,&lt;用户=&#39;robinlee&#39;&gt;],SideInfo:CurrentDate=[2020-12-01],DomainTerms=[&lt;核心用户 COMMENT &#39;核心用户指tom和lucy&#39;&gt;],SQL:SELECT 用户, 访问次数 FROM 超音数产品 WHERE 用户 IN (&#39;jackjchen&#39;, &#39;robinlee&#39;) AND 数据日期 &gt;= &#39;2020-01-01&#39; AND 数据日期 &lt;= &#39;2020-12-01&#39;
-#Query: Question:我想知道“刘艺”是否在表中？,Schema:DatabaseType=[H2], DatabaseVersion=[], Table=[歌手数据集], PartitionTimeField=[], PrimaryKeyField=[歌手名], Metrics=[&lt;播放量 COMMENT &#39;播放量&#39; AGGREGATE &#39;SUM&#39;&gt;,&lt;下载量 COMMENT &#39;下载量&#39; AGGREGATE &#39;SUM&#39;&gt;,&lt;收藏量 COMMENT &#39;收藏量&#39; AGGREGATE &#39;SUM&#39;&gt;], Dimensions=[&lt;活跃区域 COMMENT &#39;活跃区域&#39;&gt;,&lt;代表作 COMMENT &#39;代表作&#39;&gt;,&lt;歌手名 COMMENT &#39;歌手名&#39;&gt;], Values=[],SideInfo:CurrentDate=[2025-02-26]
-请生成一个包含以下字段的 JSON 对象：
-1. `thought`: thought or remarks to tell users about the sql, make it short.
-2. `sql`: sql to generate</code></pre>
-<p>上述的Prompt里面其实没有使用最原始的<strong>Table
-Schema</strong>，而是使用的<strong>语义建模</strong>中的“指标”和“维度”。在NL2SQL算法应用之前，需要用户对每个表进行加工，这不太灵活，是个缺点。</p>
-<p>大模型生成的内容，然后经过langchain的json格式解析得到下述内容：</p>
-<pre class="text"><code>SELECT 歌手名 FROM 歌手数据集 WHERE 歌手名 = &#39;刘艺&#39; LIMIT 1</code></pre>
+#Query: Question:我想知道创始人为盖茨的公司在2023年的利润是多少？苹果公司id奠基人,Schema:DatabaseType=[H2], DatabaseVersion=[], Table=[企业数据集], PartitionTimeField=[], PrimaryKeyField=[品牌id], Metrics=[&lt;利润 COMMENT &#39;利润&#39; AGGREGATE &#39;SUM&#39;&gt;], Dimensions=[&lt;创始人 COMMENT &#39;创始人&#39;&gt;,&lt;公司id COMMENT &#39;公司id&#39;&gt;,&lt;公司名称 COMMENT &#39;公司名称&#39;&gt;], Values=[&lt;创始人=&#39;盖茨&#39;&gt;],SideInfo:CurrentDate=[2025-03-17] 
+modelResp:
+OnePassSCSqlGenStrategy.SemanticSql(thought=The query retrieves the total profit for companies founded by Gates in 2023. Since there&#39;s no PartitionTimeField in the schema, no time filter is applied despite the mention of 2023. Values enforce 创始人=&#39;盖茨&#39;., sql=SELECT 公司名称, SUM(利润) AS 利润 FROM 企业数据集 WHERE 创始人 = &#39;盖茨&#39; GROUP BY 公司名称)</code></pre>
+<p><font color="cornflowerblue"> 请严格使用JSON格式，不要添加其他内容。
+{ “thought”: “…”, “sql”: “…” } </font></p>
 </div>
-<div id="第二阶段纠正semanticsql" class="section level2">
-<h2>第二阶段：纠正SemanticSQL</h2>
-<p>采用规则的方法</p>
 </div>
-<div id="第三阶段翻译semanticsql" class="section level2">
-<h2>第三阶段：翻译SemanticSQL</h2>
-<p>采用规则的方法：</p>
-<pre class="sql"><code>with t_3 as (SELECT `singer_name`
-FROM
-`singer`)
-SELECT singer_name FROM t_3 WHERE singer_name = &#39;刘艺&#39; LIMIT 1</code></pre>
+<div id="bad-cases" class="section level1">
+<h1>Bad Cases</h1>
+<div id="样例1" class="section level2">
+<h2>样例1</h2>
+<p>问题：创始人为盖茨的公司在2023年的利润是多少？</p>
+<p>发生错误：“LLM解析S2SQL失败”。</p>
+<p>错误原因分析：“2023”是字段“财年”的值，但是在MAPPING阶段只提取出来“利润”、“创始人”、“公司id”、“公司名称”这四个字段，没有提取时间字段。以至于在PARSING阶段的Prompt中大模型没有办法感知到“财年”字段的存在，进而生造了一个字段“数据日期”。这个错误的字段会在CORRECTING阶段或TRANSLATON阶段被标记为错误，最终“LLM解析S2SQL失败”，仅展示“Rul解析S2SQL”。</p>
 </div>
 </div>
 </div>

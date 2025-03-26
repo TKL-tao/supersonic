@@ -237,6 +237,13 @@ npm config set registry http://registry.npmjs.org/
 ```
 
 # 源代码结构分析
+## 添加网络代理
+如果要添加代理，可以在OpenAiModelFactory.java中的`createChatModel()`方法中新增：
+
+```java
+.proxy(new Proxy(Proxy.Type.valueOf("HTTP"), new InetSocketAddress("proxy.huawei.com", 8080))).build();
+```
+
 ## 预加载
 
 ## NL2SQL算法部分
@@ -369,6 +376,49 @@ LIMIT
 ```
 
 # WorkFlow
-## 第一阶段：SemanticSQL生成
+测试问题：**我想知道创始人为盖茨的公司在2023年的利润是多少？苹果公司id奠基人**
 
+## Parsing
+<font color="cornflowerblue">
+你是能生成结构化数据的AI助手。根据用户输入生成包含以下字段的JSON对象：
+- thought: thought or remarks to tell users about the sql, make it short.
+- sql: sql to generate
+</font>
 
+```text
+#Role: You are a data analyst experienced in SQL languages.
+#Task: You will be provided with a natural language question asked by users,please convert it to a SQL query so that relevant data could be returned by executing the SQL query against underlying database.
+#Rules:
+1.SQL columns and values must be mentioned in the `Schema`, DO NOT hallucinate.
+2.ALWAYS specify time range using `>`,`<`,`>=`,`<=` operator.
+3.DO NOT include time range in the where clause if not explicitly expressed in the `Question`.
+4.DO NOT calculate date range using functions.
+5.ALWAYS use `with` statement if nested aggregation is needed.
+6.ALWAYS enclose alias declared by `AS` command in underscores.
+7.Alias created by `AS` command must be in the same language ast the `Question`.
+#Exemplars: 
+Question:过去半个月忠实用户有哪一些,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics=[<访问次数 ALIAS 'pv' COMMENT '一段时间内用户的访问次数' AGGREGATE 'SUM'>], Dimensions=[<用户>,<数据日期>], Values=[],SideInfo:CurrentDate=[2023-09-15],DomainTerms=[<忠实用户 COMMENT '一段时间内总访问次数大于100的用户'>],SQL:SELECT 用户 FROM 超音数产品 WHERE 数据日期 >= '2023-09-01' AND 数据日期 <= '2023-09-15' GROUP BY 用户 HAVING SUM(访问次数) > 100
+Question:比较jackjchen和robinlee今年以来的访问次数,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics=[<访问次数 ALIAS 'pv' COMMENT '一段时间内用户的访问次数' AGGREGATE 'SUM'>,<访问用户数 ALIAS 'UV,访问人数,' COMMENT '访问的用户个数' AGGREGATE 'COUNT'>,<人均访问次数 ALIAS '平均访问次数,' COMMENT '每个用户平均访问的次数'>], Dimensions=[<数据日期>], Values[<用户='jackjchen'>,<用户='robinlee'>],SideInfo:CurrentDate=[2020-12-01],DomainTerms=[<核心用户 COMMENT '核心用户指tom和lucy'>],SQL:SELECT 用户, 访问次数 FROM 超音数产品 WHERE 用户 IN ('jackjchen', 'robinlee') AND 数据日期 >= '2020-01-01' AND 数据日期 <= '2020-12-01'
+Question:超音数过去90天美术部、技术研发部的访问时长,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics=[<访问时长 COMMENT '一段时间内用户的访问时长' AGGREGATE 'SUM'>], Dimensions=[<数据日期>], Values=[<部门='美术部'>,<部门='技术研发部'>],SideInfo:CurrentDate=[2023-04-21],SQL:SELECT 部门, 访问时长 FROM 超音数产品 WHERE 部门 IN ('美术部', '技术研发部') AND 数据日期 >= '2023-01-21' AND 数据日期 <= '2023-04-21'
+Question:超音数访问时长小于1小时，且来自美术部的用户是哪些,Schema:DatabaseType=[h2], Table:[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics:[<访问时长 COMMENT '一段时间内用户的访问时长' AGGREGATE 'SUM'>], Dimensions:[<用户>,<数据日期>], Values:[<部门='美术部'>],SideInfo:CurrentDate=[2023-07-31],DomainTerms=[<核心用户 COMMENT '用户为tom和lucy'>],SQL:SELECT 用户 FROM 超音数产品 WHERE 部门 = '美术部' AND 访问时长 < 1
+Question:超音数访问次数大于1k的部门是哪些,Schema:DatabaseType=[h2], Table=[超音数产品], PartitionTimeField=[数据日期 FORMAT 'yyyy-MM-dd'], Metrics=[<访问次数 ALIAS 'pv' COMMENT '一段时间内用户的访问次数' AGGREGATE 'SUM'>], Dimensions=[<部门>,<数据日期>], Values=[],SideInfo:CurrentDate=[2023-09-14],SQL:SELECT 部门 FROM 超音数产品 WHERE 访问次数 > 1000
+#Query: Question:我想知道创始人为盖茨的公司在2023年的利润是多少？苹果公司id奠基人,Schema:DatabaseType=[H2], DatabaseVersion=[], Table=[企业数据集], PartitionTimeField=[], PrimaryKeyField=[品牌id], Metrics=[<利润 COMMENT '利润' AGGREGATE 'SUM'>], Dimensions=[<创始人 COMMENT '创始人'>,<公司id COMMENT '公司id'>,<公司名称 COMMENT '公司名称'>], Values=[<创始人='盖茨'>],SideInfo:CurrentDate=[2025-03-17] 
+modelResp:
+OnePassSCSqlGenStrategy.SemanticSql(thought=The query retrieves the total profit for companies founded by Gates in 2023. Since there's no PartitionTimeField in the schema, no time filter is applied despite the mention of 2023. Values enforce 创始人='盖茨'., sql=SELECT 公司名称, SUM(利润) AS 利润 FROM 企业数据集 WHERE 创始人 = '盖茨' GROUP BY 公司名称)
+```
+
+<font color="cornflowerblue">
+请严格使用JSON格式，不要添加其他内容。
+{
+  "thought": "...",
+  "sql": "..."
+}
+</font>
+
+# Bad Cases
+## 样例1
+问题：创始人为盖茨的公司在2023年的利润是多少？
+
+发生错误：“LLM解析S2SQL失败”。
+
+错误原因分析：“2023”是字段“财年”的值，但是在MAPPING阶段只提取出来“利润”、“创始人”、“公司id”、“公司名称”这四个字段，没有提取时间字段。以至于在PARSING阶段的Prompt中大模型没有办法感知到“财年”字段的存在，进而生造了一个字段“数据日期”。这个错误的字段会在CORRECTING阶段或TRANSLATON阶段被标记为错误，最终“LLM解析S2SQL失败”，仅展示“Rul解析S2SQL”。
