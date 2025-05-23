@@ -11,6 +11,7 @@ public class DbParameterFactory {
 
     static {
         parametersBuilder = new LinkedHashMap<>();
+        parametersBuilder.put(EngineType.HIVE.getName(), new HiveParametersBuilder());
         parametersBuilder.put(EngineType.H2.getName(), new H2ParametersBuilder());
         parametersBuilder.put(EngineType.CLICKHOUSE.getName(), new ClickHouseParametersBuilder());
         parametersBuilder.put(EngineType.MYSQL.getName(), new MysqlParametersBuilder());
